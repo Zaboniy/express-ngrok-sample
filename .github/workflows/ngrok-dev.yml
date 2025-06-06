@@ -1,0 +1,34 @@
+name: Dev Server with Docker and Ngrok
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dev-server:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create env file for ngrok token
+        run: echo "NGROK_AUTH_TOKEN=${{ secrets.NGROK_AUTH_TOKEN }}" > .env
+
+      - name: Build and run Docker Compose
+        run: |
+          docker compose up -d
+          sleep 10  # Wait for ngrok to initialize
+          curl -s http://localhost:4040/api/tunnels > tunnels.json
+          echo "✅ Public ngrok URL:"
+          jq -r '.tunnels[0].public_url' tunnels.json
+
+      - name: Show logs
+        run: docker compose logs --tail=100
+      - name: Keep tunnel alive (cancel manually to stop)
+        run: |
+          echo "🟢 Tunnel is live. Visit the public URL above."
+          echo "⏳ This job will stay alive for 2 hours. Cancel manually if you're done."
+          sleep 3600  # 2 hours
